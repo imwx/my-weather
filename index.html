@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>上海天气 - 实时预报</title>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --glass: rgba(255, 255, 255, 0.2);
+            --text-main: #ffffff;
+            --warn-color: #ff4d4d;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+
+        body {
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* 顶部标题 */
+        header { text-align: center; margin-bottom: 30px; }
+        header h1 { font-size: 2.5rem; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        header p { opacity: 0.8; margin-top: 5px; }
+
+        /* 预警模块 */
+        .alert-box {
+            background: var(--warn-color);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: none; /* 默认隐藏，有预警时显示 */
+            animation: pulse 2s infinite;
+        }
+
+        /* 核心天气卡片 */
+        .main-card {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .temp-now { font-size: 5rem; font-weight: bold; margin: 10px 0; }
+        .temp-now span { font-size: 2rem; vertical-align: top; }
+
+        /* 详情数据网格 */
+        .details-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .detail-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        /* 7天预报列表 */
+        .forecast-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .forecast-day {
+            background: var(--glass);
+            padding: 15px 25px;
+            border-radius: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.3s;
+        }
+
+        .forecast-day:hover { transform: scale(1.02); }
+
+        /* 响应式调整 */
+        @media (min-width: 768px) {
+            .forecast-list {
+                display: grid;
+                grid-template-columns: repeat(7, 1fr);
+                gap: 10px;
+            }
+            .forecast-day {
+                flex-direction: column;
+                padding: 20px 10px;
+                text-align: center;
+            }
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .aqi-good { color: #52c41a; font-weight: bold; }
+        .aqi-mid { color: #faad14; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1 id="city">上海</h1>
+        <p id="date">2026年1月28日 星期三</p>
+    </header>
+
+    <div id="weather-alert" class="alert-box">
+        <strong>⚠️ 异常天气预警：</strong> <span id="alert-text">今日预计有大风蓝色预警，请注意出行安全。</span>
+    </div>
+
+    <section class="main-card">
+        <div id="condition" style="font-size: 1.5rem;">多云转晴</div>
+        <div class="temp-now">7<span>°C</span></div>
+        <div class="details-grid">
+            <div class="detail-item">
+                <p>空气质量</p>
+                <p id="aqi" class="aqi-good">45 优</p>
+            </div>
+            <div class="detail-item">
+                <p>风力提醒</p>
+                <p id="wind">西北风 4级</p>
+            </div>
+            <div class="detail-item">
+                <p>相对湿度</p>
+                <p>65%</p>
+            </div>
+        </div>
+    </section>
+
+    <h3 style="margin-bottom: 15px;">未来7天预报</h3>
+    <section class="forecast-list" id="forecast-container">
+        </section>
+</div>
+
+<script>
+// 1. 配置信息
+const API_KEY = "793c97a29e61493782d3780951d83c05"; 
+const CITY_ID = "101020100"; // 上海
+// 使用你提供的专用域名
+const BASE_URL = "https://n36hextae3.re.qweatherapi.com/v7";
+
+async function fetchWeather() {
+    try {
+        // 构建请求地址
+        const urls = {
+            now: `${BASE_URL}/weather/now?location=${CITY_ID}&key=${API_KEY}`,
+            daily: `${BASE_URL}/weather/7d?location=${CITY_ID}&key=${API_KEY}`,
+            air: `${BASE_URL}/air/now?location=${CITY_ID}&key=${API_KEY}`,
+            warn: `${BASE_URL}/warning/now?location=${CITY_ID}&key=${API_KEY}`
+        };
+
+        // 发起并发请求
+        const [nowRes, dailyRes, airRes, warnRes] = await Promise.all([
+            fetch(urls.now).then(res => res.json()),
+            fetch(urls.daily).then(res => res.json()),
+            fetch(urls.air).then(res => res.json()),
+            fetch(urls.warn).then(res => res.json())
+        ]);
+
+        // 检查核心数据（实时和预报）是否成功返回
+        if (nowRes.code === "200" && dailyRes.code === "200") {
+            updateUI(nowRes, dailyRes, airRes, warnRes);
+            console.log("天气数据更新成功！");
+        } else {
+            console.error("API返回异常码:", { now: nowRes.code, daily: dailyRes.code });
+        }
+    } catch (err) {
+        console.error("网络请求错误:", err);
+    }
+}
+
+function updateUI(now, daily, air, warn) {
+    // 1. 更新实时天气卡片
+    document.querySelector('.temp-now').innerHTML = `${now.now.temp}<span>°C</span>`;
+    document.getElementById('condition').innerText = now.now.text;
+    document.getElementById('wind').innerText = `${now.now.windDir} ${now.now.windScale}级`;
+
+    // 2. 更新空气质量
+    if (air.code === "200") {
+        const aqiVal = air.now.aqi;
+        const aqiEl = document.getElementById('aqi');
+        aqiEl.innerText = `${aqiVal} ${air.now.category}`;
+        aqiEl.className = aqiVal <= 50 ? 'aqi-good' : (aqiVal <= 100 ? 'aqi-mid' : '');
+    }
+
+    // 3. 更新预警信息（如果有）
+    const alertBox = document.getElementById('weather-alert');
+    if (warn.code === "200" && warn.warning && warn.warning.length > 0) {
+        alertBox.style.display = 'block';
+        document.getElementById('alert-text').innerText = warn.warning[0].title;
+    } else {
+        alertBox.style.display = 'none';
+    }
+
+    // 4. 更新未来7天预报列表
+    const forecastContainer = document.getElementById('forecast-container');
+    forecastContainer.innerHTML = ''; // 清空加载态
+
+    daily.daily.forEach(item => {
+        const dateObj = new Date(item.fxDate);
+        const dayNames = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+        const dayName = dayNames[dateObj.getDay()];
+        
+        const div = document.createElement('div');
+        div.className = 'forecast-day';
+        div.innerHTML = `
+            <span style="font-weight:bold">${dayName}</span>
+            <span>${item.fxDate.split('-').slice(1).join('-')}</span>
+            <span style="font-size:1.5rem">${getWeatherIcon(item.textDay)}</span>
+            <span>${item.tempMin}°/${item.tempMax}°</span>
+        `;
+        forecastContainer.appendChild(div);
+    });
+}
+
+// 天气现象图标映射
+function getWeatherIcon(text) {
+    if (text.includes("晴")) return "☀️";
+    if (text.includes("云")) return "🌤️";
+    if (text.includes("阴")) return "☁️";
+    if (text.includes("雨")) return "🌧️";
+    if (text.includes("雪")) return "❄️";
+    return "🌡️";
+}
+
+// 启动执行
+window.onload = () => {
+    fetchWeather();
+    const now = new Date();
+    document.getElementById('date').innerText = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+};
+</script>
+
+</body>
+</html>
