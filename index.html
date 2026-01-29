@@ -30,25 +30,55 @@
             max-width: 900px;
         }
 
-        /* 城市切换导航 */
-        .city-tabs {
+        /* 搜索栏样式 */
+        .search-container {
             display: flex;
             justify-content: center;
             gap: 10px;
             margin-bottom: 20px;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
-        .city-btn {
-            background: var(--glass);
+        #city-search {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 25px;
             border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.2);
             color: white;
-            padding: 8px 20px;
-            border-radius: 20px;
-            cursor: pointer;
+            backdrop-filter: blur(5px);
+            outline: none;
+            font-size: 1rem;
             transition: 0.3s;
         }
-        .city-btn.active {
-            background: var(--active-city);
-            box-shadow: 0 0 10px rgba(255,255,255,0.3);
+        #city-search:focus {
+            background: rgba(255,255,255,0.3);
+            box-shadow: 0 0 15px rgba(255,255,255,0.2);
+        }
+        #city-search::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+        #search-btn, #locate-btn {
+            padding: 0 20px;
+            border-radius: 25px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.2);
+            color: white;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+        #search-btn:hover, #locate-btn:hover {
+            background: rgba(255,255,255,0.4);
+            transform: translateY(-2px);
+        }
+        #locate-btn {
+            padding: 0 15px;
         }
 
         header { text-align: center; margin-bottom: 30px; }
@@ -134,8 +164,11 @@
 <body>
 
 <div class="container">
-    <div class="city-tabs" id="city-tabs">
-        </div>
+    <div class="search-container">
+        <input type="text" id="city-search" placeholder="输入城市名 (如: 上海, Beijing)..." onkeypress="if(event.key === 'Enter') handleSearch()">
+        <button id="search-btn" onclick="handleSearch()">🔍</button>
+        <button id="locate-btn" onclick="handleLocation()" title="定位当前位置">📍</button>
+    </div>
 
     <header>
         <h1 id="city-name">加载中...</h1>
@@ -149,6 +182,7 @@
     <section class="main-card">
         <div id="condition" style="font-size: 1.5rem;">--</div>
         <div class="temp-now" id="temp-val">--<span>°C</span></div>
+        <div id="feels-like-container" style="font-size: 1.1rem; opacity: 0.9; margin-bottom: 20px;">体感 <span id="feels-like">--</span>°C</div>
         <div class="details-grid">
             <div class="detail-item">
                 <p>降水概率</p>
@@ -178,49 +212,93 @@
 const API_KEY = "793c97a29e61493782d3780951d83c05"; 
 const BASE_URL = "https://n36hextae3.re.qweatherapi.com/v7";
 
-// 城市数据配置（增加经纬度用于获取免费空气质量）
-const CITIES = [
-    { name: "上海", id: "101020100", lat: 31.2304, lon: 121.4737 },
-    { name: "北京", id: "101010100", lat: 39.9042, lon: 116.4074 },
-    { name: "金坛", id: "101191103", lat: 31.7404, lon: 119.5705 }
-];
+// 当前城市状态 (默认上海)
+let currentCity = { name: "上海", lat: 31.2304, lon: 121.4737 };
 
-let currentCityId = CITIES[0].id;
+// 搜索城市
+async function handleSearch() {
+    const input = document.getElementById('city-search');
+    const query = input.value.trim();
+    if (!query) return;
 
-// 初始化城市切换按钮
-function initCityTabs() {
-    const container = document.getElementById('city-tabs');
-    CITIES.forEach(city => {
-        const btn = document.createElement('button');
-        btn.className = `city-btn ${city.id === currentCityId ? 'active' : ''}`;
-        btn.innerText = city.name;
-        btn.onclick = () => switchCity(city.id, btn);
-        container.appendChild(btn);
-    });
+    const btn = document.getElementById('search-btn');
+    const originalText = btn.innerText;
+    btn.innerText = "⏳";
+    btn.disabled = true;
+
+    try {
+        // 使用 Open-Meteo Geocoding API 搜索城市
+        const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=zh&format=json`;
+        const res = await fetch(url).then(r => r.json());
+
+        if (res.results && res.results.length > 0) {
+            const result = res.results[0];
+            currentCity = {
+                name: result.name,
+                lat: result.latitude,
+                lon: result.longitude
+            };
+            fetchWeather();
+            input.value = ''; // 清空输入框
+        } else {
+            alert("未找到该城市，请尝试输入拼音或英文名");
+        }
+    } catch (err) {
+        console.error("搜索失败:", err);
+        alert("搜索服务暂时不可用");
+    } finally {
+        btn.innerText = originalText;
+        btn.disabled = false;
+    }
 }
 
-function switchCity(cityId, btnElement) {
-    currentCityId = cityId;
-    // 更新按钮样式
-    document.querySelectorAll('.city-btn').forEach(b => b.classList.remove('active'));
-    btnElement.classList.add('active');
-    // 重新抓取数据
-    fetchWeather();
+// 获取定位
+function handleLocation() {
+    const btn = document.getElementById('locate-btn');
+    
+    if (!navigator.geolocation) {
+        alert("您的浏览器不支持地理定位");
+        return;
+    }
+
+    btn.style.transform = "scale(0.9)";
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const { latitude, longitude } = position.coords;
+            currentCity = {
+                name: "我的位置", 
+                lat: latitude,
+                lon: longitude
+            };
+            fetchWeather();
+            btn.style.transform = "scale(1)";
+        },
+        (error) => {
+            console.error("定位失败:", error);
+            let msg = "定位失败";
+            if (error.code === 1) msg = "请允许获取位置信息";
+            alert(msg);
+            btn.style.transform = "scale(1)";
+        },
+        { timeout: 10000 }
+    );
 }
 
 async function fetchWeather() {
     try {
-        // 获取当前城市对象
-        const city = CITIES.find(c => c.id === currentCityId);
+        const { lat, lon } = currentCity;
+        // 和风天气 API 接受 lon,lat 格式
+        const locationStr = `${lon.toFixed(2)},${lat.toFixed(2)}`;
 
         const urls = {
-            now: `${BASE_URL}/weather/now?location=${currentCityId}&key=${API_KEY}`,
+            now: `${BASE_URL}/weather/now?location=${locationStr}&key=${API_KEY}`,
             // 使用 Open-Meteo 免费天气预报 API (含降水概率、7天预报)
-            daily: `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`,
+            daily: `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto`,
             // 使用 Open-Meteo 免费空气质量 API (无需Key)
-            air: `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${city.lat}&longitude=${city.lon}&current=us_aqi,pm2_5`,
-            warn: `${BASE_URL}/warning/now?location=${currentCityId}&key=${API_KEY}`
-        };
+        // 获取所有主要污染物用于计算综合 AQI (PM2.5, PM10, NO2, SO2, O3, CO)
+        air: `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone`,
+        warn: `${BASE_URL}/warning/now?location=${locationStr}&key=${API_KEY}`
+    };
 
         const [nowRes, dailyRes, airRes, warnRes] = await Promise.all([
             fetch(urls.now).then(res => res.json()),
@@ -240,11 +318,11 @@ async function fetchWeather() {
 
 function updateUI(now, daily, air, warn) {
     // 获取当前城市名称
-    const city = CITIES.find(c => c.id === currentCityId);
-    document.getElementById('city-name').innerText = city.name;
+    document.getElementById('city-name').innerText = currentCity.name;
 
     // 1. 更新实时数据
     document.getElementById('temp-val').innerHTML = `${now.now.temp}<span>°C</span>`;
+    document.getElementById('feels-like').innerText = now.now.feelsLike;
     document.getElementById('condition').innerText = now.now.text;
     document.getElementById('wind').innerText = `${now.now.windDir}${now.now.windScale}级`;
     document.getElementById('humidity').innerText = `${now.now.humidity}%`;
@@ -258,9 +336,12 @@ function updateUI(now, daily, air, warn) {
     // 2. 空气质量 (适配 Open-Meteo 数据结构)
     const aqiEl = document.getElementById('aqi');
     
-    // 检查 Open-Meteo 返回结构 (current.us_aqi)
-    if (air && air.current && air.current.us_aqi !== undefined) {
-        const aqiVal = air.current.us_aqi;
+    // 检查 Open-Meteo 返回结构
+    if (air && air.current) {
+        // 根据多项污染物计算综合 AQI (取最大值)
+        // 包含 PM2.5, PM10, NO2, SO2, CO, O3
+        const current = air.current;
+        const aqiVal = calculateComplexAQI(current);
         
         // 计算等级描述
         let category = "优";
@@ -324,6 +405,84 @@ function updateUI(now, daily, air, warn) {
     }
 }
 
+// 综合 AQI 计算 (中国标准 HJ 633-2012)
+function calculateComplexAQI(data) {
+    // 获取各污染物浓度 (Open-Meteo 单位: ug/m3)
+    const pm25 = data.pm2_5 || 0;
+    const pm10 = data.pm10 || 0;
+    const no2 = data.nitrogen_dioxide || 0;
+    const so2 = data.sulphur_dioxide || 0;
+    const o3 = data.ozone || 0;
+    // CO 单位需从 ug/m3 转为 mg/m3 (假设 Open-Meteo 为 ug/m3, 需核实，通常 API 返回 ug/m3)
+    const co = (data.carbon_monoxide || 0) / 1000;
+
+    // 计算各分项 IAQI
+    const iaqiList = [
+        calcIAQI(pm25, "pm25"),
+        calcIAQI(pm10, "pm10"),
+        calcIAQI(no2, "no2"),
+        calcIAQI(so2, "so2"),
+        calcIAQI(o3, "o3"),
+        calcIAQI(co, "co")
+    ];
+
+    // 取最大值作为 AQI
+    return Math.max(...iaqiList);
+}
+
+// 单项 IAQI 计算辅助函数
+function calcIAQI(c, type) {
+    let breakpoints = [];
+    
+    // 分级限值定义 (Low, High, I_Low, I_High)
+    // 数据来源: HJ 633-2012
+    switch(type) {
+        case "pm25": // 24h限值
+            breakpoints = [0, 35, 75, 115, 150, 250, 350, 500];
+            break;
+        case "pm10": // 24h限值
+            breakpoints = [0, 50, 150, 250, 350, 420, 500, 600];
+            break;
+        case "no2": // 1h限值 (实时报参考)
+            breakpoints = [0, 100, 200, 700, 1200, 2340, 3090, 3840];
+            break;
+        case "so2": // 1h限值
+            breakpoints = [0, 150, 500, 650, 800]; // 后续分级未定义完善，取主要区间
+            break;
+        case "o3": // 1h限值
+            breakpoints = [0, 160, 200, 300, 400, 800, 1000, 1200];
+            break;
+        case "co": // 1h限值 (mg/m3)
+            breakpoints = [0, 5, 10, 35, 60, 90, 120, 150];
+            break;
+        default:
+            return 0;
+    }
+
+    const iRanges = [0, 50, 100, 150, 200, 300, 400, 500];
+
+    // 寻找区间
+    let lowC = 0, highC = 0, lowI = 0, highI = 0;
+    
+    // 如果超出最大量程，直接返回最大值或按比例外推（简化处理返回最大值）
+    if (c >= breakpoints[breakpoints.length - 1]) return 500;
+
+    for (let i = 0; i < breakpoints.length - 1; i++) {
+        if (c >= breakpoints[i] && c <= breakpoints[i+1]) {
+            lowC = breakpoints[i];
+            highC = breakpoints[i+1];
+            lowI = iRanges[i];
+            highI = iRanges[i+1];
+            break;
+        }
+    }
+    
+    if (highC === 0) return 0; // 异常处理
+
+    // 线性插值
+    return Math.round(((highI - lowI) / (highC - lowC)) * (c - lowC) + lowI);
+}
+
 function getWeatherIcon(code) {
     // 兼容 Open-Meteo WMO Code (数字) 和 和风天气 (文本)
     if (typeof code === 'number') {
@@ -357,7 +516,6 @@ function getWeatherIcon(code) {
 }
 
 window.onload = () => {
-    initCityTabs();
     fetchWeather();
     const now = new Date();
     document.getElementById('date').innerText = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
