@@ -3,14 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkyCast - 智能天气</title>
-    <!-- Vue 3 -->
+    <title>SkyCast - 智能天气 (QWeather Core)</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ECharts -->
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Outfit', sans-serif; }
@@ -39,14 +35,11 @@
 </head>
 <body class="bg-[#0f172a] text-white min-h-screen selection:bg-blue-500 selection:text-white overflow-x-hidden">
     <div id="app" class="min-h-screen relative">
-        <!-- Dynamic Background -->
         <div class="fixed inset-0 z-0 transition-all duration-1000 bg-gradient-to-br from-slate-900 via-slate-800 to-black" :class="bgClass"></div>
         <div class="fixed inset-0 z-0 opacity-30 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] brightness-100 contrast-150 mix-blend-overlay"></div>
         
-        <!-- Main Container -->
         <div class="relative z-10 container mx-auto px-4 py-8 max-w-6xl min-h-screen flex flex-col">
             
-            <!-- Navbar -->
             <header class="flex flex-col md:flex-row justify-between items-center mb-12 gap-6">
                 <div class="flex items-center gap-3 select-none">
                     <div class="w-10 h-10 bg-gradient-to-tr from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
@@ -63,7 +56,7 @@
                         v-model="searchQuery" 
                         @keyup.enter="handleSearch"
                         type="text" 
-                        placeholder="Search City (e.g., 北京, Shanghai...)" 
+                        placeholder="Search City (e.g., 三亚, Harbin, 台北...)" 
                         class="w-full bg-white/5 border border-white/10 rounded-full py-3.5 pl-12 pr-24 outline-none focus:bg-white/10 focus:border-blue-400/50 transition-all placeholder-gray-500 backdrop-blur-sm text-sm"
                     >
                     <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors">
@@ -78,7 +71,6 @@
                 </div>
             </header>
 
-            <!-- Loading State -->
             <div v-if="loading" class="flex-1 flex flex-col items-center justify-center min-h-[50vh]">
                 <div class="relative w-20 h-20">
                     <div class="absolute inset-0 border-4 border-blue-500/30 rounded-full"></div>
@@ -87,7 +79,6 @@
                 <p class="mt-6 text-blue-200 font-light tracking-wide animate-pulse">Connecting to satellite...</p>
             </div>
 
-            <!-- Error State -->
             <div v-else-if="errorMsg" class="flex-1 flex flex-col items-center justify-center min-h-[50vh] text-center">
                 <div class="w-24 h-24 bg-red-500/10 rounded-full flex items-center justify-center mb-6">
                     <span class="text-4xl">⚠️</span>
@@ -100,14 +91,10 @@
                 </button>
             </div>
 
-            <!-- Dashboard -->
             <main v-else class="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in pb-12">
                 
-                <!-- Left Column (4 cols) -->
                 <div class="lg:col-span-4 flex flex-col gap-6">
-                    <!-- Hero Card -->
                     <div class="glass-panel rounded-[2rem] p-8 relative overflow-hidden group">
-                        <!-- Decorative glow -->
                         <div class="absolute -top-20 -right-20 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl group-hover:bg-blue-500/30 transition-all duration-700"></div>
                         
                         <div class="relative z-10">
@@ -129,6 +116,9 @@
                                     <span>{{ getWeatherIcon(data.forecast[0].type) }}</span>
                                     <span>{{ data.forecast[0].type }}</span>
                                 </div>
+                                <div class="mt-2 text-[10px] text-blue-300/50 uppercase tracking-widest border border-blue-500/20 px-2 py-0.5 rounded-full">
+                                    QWeather Real-time
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4 mt-8 pt-8 border-t border-white/10">
@@ -144,7 +134,6 @@
                         </div>
                     </div>
 
-                    <!-- AQI Card -->
                     <div class="glass-panel rounded-[2rem] p-6 flex items-center justify-between relative overflow-hidden">
                         <div class="absolute inset-0 bg-gradient-to-r from-green-500/10 to-transparent opacity-50" v-if="data.forecast[0].aqi <= 50"></div>
                         <div class="relative z-10 flex flex-col">
@@ -158,10 +147,8 @@
                     </div>
                 </div>
 
-                <!-- Right Column (8 cols) -->
                 <div class="lg:col-span-8 flex flex-col gap-6">
                     
-                    <!-- Stats Grid -->
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div class="glass-card rounded-2xl p-5 flex flex-col items-center justify-center aspect-[4/3] group hover:bg-white/10 cursor-default">
                             <span class="text-3xl mb-3 group-hover:scale-110 transition-transform duration-300">💧</span>
@@ -185,7 +172,6 @@
                         </div>
                     </div>
 
-                    <!-- Chart Section -->
                     <div class="glass-panel rounded-[2rem] p-6 flex-1 flex flex-col">
                         <div class="flex items-center justify-between mb-6">
                             <h3 class="text-lg font-bold flex items-center gap-2">
@@ -196,7 +182,6 @@
                         <div id="chart-container" class="w-full flex-1 min-h-[250px]"></div>
                     </div>
 
-                    <!-- Forecast List (Horizontal) -->
                     <div class="glass-panel rounded-[2rem] p-6">
                          <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
                             <span class="w-1.5 h-6 bg-purple-500 rounded-full"></span>
@@ -223,7 +208,7 @@
 
             <footer class="mt-auto py-6 text-center">
                  <p class="text-xs text-gray-600">
-                    Built with <span class="text-blue-500">Vue 3</span> & <span class="text-teal-500">Tailwind</span> • Weather Data by ItBoy
+                    Built with <span class="text-blue-500">Vue 3</span> & <span class="text-teal-500">Tailwind</span> • Temp by <span class="text-blue-400">QWeather</span>
                 </p>
             </footer>
         </div>
@@ -231,6 +216,10 @@
 
     <script>
         const { createApp, ref, onMounted, nextTick, computed } = Vue;
+
+        // QWeather Config
+        const QWEATHER_KEY = "793c97a29e61493782d3780951d83c05";
+        const QWEATHER_BASE = "https://n36hextae3.re.qweatherapi.com/v7";
 
         createApp({
             setup() {
@@ -240,13 +229,50 @@
                 const data = ref({});
                 const searchQuery = ref('');
 
-                // 城市代码映射
+                // 城市代码映射 (Expanded)
                 const cityMap = {
-                    '北京': '101010100', '上海': '101020100', '广州': '101280101', '深圳': '101280601',
-                    '成都': '101270101', '杭州': '101210101', '南京': '101190101', '武汉': '101200101',
-                    '西安': '101110101', '重庆': '101040100', '天津': '101030100', '苏州': '101190401',
-                    '郑州': '101180101', '长沙': '101250101', '东莞': '101281601', '沈阳': '101070101',
-                    '青岛': '101120201', '合肥': '101220101', '佛山': '101280800'
+                    // 直辖市
+                    '北京': '101010100', '上海': '101020100', '天津': '101030100', '重庆': '101040100',
+                    
+                    // 华北
+                    '石家庄': '101090101', '太原': '101100101', '呼和浩特': '101080101', '包头': '101080201',
+                    
+                    // 东北
+                    '沈阳': '101070101', '大连': '101070201', '长春': '101060101', '哈尔滨': '101050101',
+                    
+                    // 华东
+                    '南京': '101190101', '苏州': '101190401', '无锡': '101190201', '常州': '101190301',
+                    '杭州': '101210101', '宁波': '101210401', '温州': '101210701',
+                    '合肥': '101220101', 
+                    '福州': '101230101', '厦门': '101230201', 
+                    '南昌': '101240101', 
+                    '济南': '101120101', '青岛': '101120201', '烟台': '101120501',
+                    
+                    // 华中
+                    '郑州': '101180101', '洛阳': '101180901', 
+                    '武汉': '101200101', '宜昌': '101200901',
+                    '长沙': '101250101', '张家界': '101251101',
+                    
+                    // 华南
+                    '广州': '101280101', '深圳': '101280601', '珠海': '101280701', '佛山': '101280800', '东莞': '101281601', '中山': '101281701',
+                    '南宁': '101300101', '桂林': '101300501', 
+                    '海口': '101310101', '三亚': '101310201',
+                    
+                    // 西南
+                    '成都': '101270101', 
+                    '贵阳': '101260101', 
+                    '昆明': '101290101', '大理': '101290201', '丽江': '101291401', 
+                    '拉萨': '101140101',
+                    
+                    // 西北
+                    '西安': '101110101', '咸阳': '101110200',
+                    '兰州': '101160101', 
+                    '西宁': '101150101', 
+                    '银川': '101170101', 
+                    '乌鲁木齐': '101130101',
+                    
+                    // 港澳台
+                    '香港': '101320101', '澳门': '101330101', '台北': '101340101'
                 };
 
                 const todayDate = computed(() => {
@@ -335,12 +361,8 @@
                     window.addEventListener('resize', () => chart.resize());
                 };
 
-                const fetchData = async (cityCode = '101020100') => {
-                    loading.value = true;
-                    errorMsg.value = '';
-                    
-                    const targetUrl = `http://t.weather.itboy.net/api/weather/city/${cityCode}`;
-                    
+                // 通用网络请求函数，处理代理策略
+                const fetchWithStrategy = async (targetUrl) => {
                     // 定义尝试策略：直接请求 -> 公共代理1 -> 公共代理2
                     const strategies = [
                         { name: 'Direct', url: targetUrl },
@@ -352,47 +374,71 @@
 
                     for (const strategy of strategies) {
                         try {
-                            console.log(`尝试通过 [${strategy.name}] 获取数据...`);
                             const res = await fetch(strategy.url);
-                            
-                            if (!res.ok) {
-                                throw new Error(`Status ${res.status}`);
-                            }
-                            
+                            if (!res.ok) throw new Error(`Status ${res.status}`);
                             const json = await res.json();
-                            
-                            // 验证数据有效性
-                            if (json.status !== 200 || !json.data) {
-                                throw new Error(json.message || "数据无效");
-                            }
-
-                            // 数据获取成功，处理数据
-                            json.data.forecast = json.data.forecast.map(day => ({
-                                ...day,
-                                highNum: parseInt(day.high.replace(/[^0-9.-]/g, '')),
-                                lowNum: parseInt(day.low.replace(/[^0-9.-]/g, '')),
-                                shortDate: day.ymd.substring(5).replace('-', '/')
-                            }));
-
-                            cityInfo.value = json.cityInfo;
-                            data.value = json.data;
-                            loading.value = false;
-
-                            await nextTick();
-                            initChart(json.data.forecast);
-                            return; // 成功后直接退出函数
-
+                            return json; // 成功返回数据
                         } catch (err) {
-                            console.warn(`[${strategy.name}] 失败:`, err);
+                            // 失败则尝试下一个策略
                             lastError = err;
-                            // 继续尝试下一个策略
                         }
                     }
+                    throw lastError; // 所有策略失败
+                };
 
-                    // 如果所有策略都失败
-                    console.error("所有尝试均失败", lastError);
-                    errorMsg.value = `无法加载数据 (${lastError.message})。可能是由于跨域限制(CORS)或网络连接问题。建议安装 'Allow CORS' 浏览器插件。`;
-                    loading.value = false;
+                const fetchData = async (cityCode = '101020100') => {
+                    loading.value = true;
+                    errorMsg.value = '';
+                    
+                    try {
+                        // 1. 获取原有接口数据 (包含Forecast, City Info等)
+                        const itboyUrl = `http://t.weather.itboy.net/api/weather/city/${cityCode}`;
+                        console.log("Fetching Main Data...");
+                        const mainJson = await fetchWithStrategy(itboyUrl);
+
+                        if (mainJson.status !== 200 || !mainJson.data) {
+                            throw new Error(mainJson.message || "数据无效");
+                        }
+
+                        // 处理原有数据
+                        mainJson.data.forecast = mainJson.data.forecast.map(day => ({
+                            ...day,
+                            highNum: parseInt(day.high.replace(/[^0-9.-]/g, '')),
+                            lowNum: parseInt(day.low.replace(/[^0-9.-]/g, '')),
+                            shortDate: day.ymd.substring(5).replace('-', '/')
+                        }));
+
+                        cityInfo.value = mainJson.cityInfo;
+                        data.value = mainJson.data;
+
+                        // 2. [NEW] 获取和风天气实时温度 (QWeather)
+                        // 使用相同的 cityCode (和风支持 Adcode)
+                        const qUrl = `${QWEATHER_BASE}/weather/now?location=${cityCode}&key=${QWEATHER_KEY}`;
+                        console.log("Fetching QWeather Temp...");
+                        
+                        try {
+                            const qJson = await fetchWithStrategy(qUrl);
+                            if(qJson.code === "200" && qJson.now) {
+                                console.log("QWeather Temp Updated:", qJson.now.temp);
+                                // 覆盖原有温度数据
+                                data.value.wendu = qJson.now.temp;
+                            } else {
+                                console.warn("QWeather response invalid:", qJson);
+                            }
+                        } catch (qErr) {
+                            console.warn("QWeather fetch failed, keeping original temp:", qErr);
+                            // 即使和风天气失败，也不要阻断整个应用，使用原有接口的温度作为回退
+                        }
+
+                        loading.value = false;
+                        await nextTick();
+                        initChart(mainJson.data.forecast);
+
+                    } catch (err) {
+                        console.error("所有尝试均失败", err);
+                        errorMsg.value = `无法加载数据 (${err.message})。可能是由于跨域限制(CORS)或网络连接问题。`;
+                        loading.value = false;
+                    }
                 };
 
                 const handleSearch = () => {
@@ -404,7 +450,8 @@
                     if (city) {
                         fetchData(cityMap[city]);
                     } else {
-                        alert("暂不支持该城市，请尝试: " + Object.keys(cityMap).slice(0,5).join(', ') + "...");
+                        // 提示时也只显示部分热门城市
+                        alert("支持全国大部分主要城市，例如: 北京, 深圳, 拉萨, 三亚...");
                     }
                 };
 
